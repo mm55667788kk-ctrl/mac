@@ -9,11 +9,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the IPA
         run: |
-          for z in *.zip; do [ -f "$z" ] && unzip -oq "$z"; done
-          s=$(find . -name build-ipa.sh -not -path './.git/*' | head -1)
-          if [ -z "$s" ]; then echo "ارفع ملف SahraMAC-iOS.zip"; exit 0; fi
-          bash "$s"
-          mv "$(dirname "$s")/SahraMAC.ipa" ./SahraMAC.ipa 2>/dev/null || true
+          if [ -f SahraMAC-iOS.zip ]; then
+            rm -rf SahraMAC-iOS && unzip -oq SahraMAC-iOS.zip && cd SahraMAC-iOS
+          fi
+          bash build-ipa.sh
+          cp SahraMAC.ipa "$GITHUB_WORKSPACE/SahraMAC.ipa" 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         with:
           name: SahraMAC-ipa
