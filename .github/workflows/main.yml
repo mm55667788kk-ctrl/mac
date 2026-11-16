@@ -1,27 +1,36 @@
-name: Build SahraMAC 3.0 IPA
+name: Build SahraMAC 2.0 IPA
+
 on:
-  workflow_dispatch:
   push:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 45
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build SahraMAC 3.0
+
+      - name: Build SahraMAC 2.0
         run: |
           source_dir="$(mktemp -d)"
-          unzip -oq SahraMAC-iOS-3.0.zip -d "$source_dir"
+          unzip -oq SahraMAC-iOS-2.0.zip -d "$source_dir"
           cd "$source_dir/SahraMAC-iOS"
-          test "$(plutil -extract CFBundleShortVersionString raw -o - App/Info.plist)" = 3.0
+          version="$(plutil -extract CFBundleShortVersionString raw -o - App/Info.plist)"
+          if [ "$version" != "2.0" ]; then
+            echo "Expected SahraMAC 2.0, found $version"
+            exit 1
+          fi
           bash build-ipa.sh
           cp SahraMAC.ipa "$GITHUB_WORKSPACE/SahraMAC.ipa"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: SahraMAC-ipa
+          name: SahraMAC-2.0-ipa
           path: SahraMAC.ipa
           if-no-files-found: error
