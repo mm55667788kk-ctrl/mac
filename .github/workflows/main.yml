@@ -1,20 +1,27 @@
-name: Build SahraMAC IPA
+name: Build SahraMAC 3.0 IPA
 on:
   workflow_dispatch:
   push:
+
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Build the IPA
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build SahraMAC 3.0
         run: |
-          if [ -f SahraMAC-iOS.zip ]; then
-            rm -rf SahraMAC-iOS && unzip -oq SahraMAC-iOS.zip && cd SahraMAC-iOS
-          fi
+          source_dir="$(mktemp -d)"
+          unzip -oq SahraMAC-iOS-3.0.zip -d "$source_dir"
+          cd "$source_dir/SahraMAC-iOS"
+          test "$(plutil -extract CFBundleShortVersionString raw -o - App/Info.plist)" = 3.0
           bash build-ipa.sh
-          cp SahraMAC.ipa "$GITHUB_WORKSPACE/SahraMAC.ipa" 2>/dev/null || true
+          cp SahraMAC.ipa "$GITHUB_WORKSPACE/SahraMAC.ipa"
       - uses: actions/upload-artifact@v4
         with:
           name: SahraMAC-ipa
           path: SahraMAC.ipa
+          if-no-files-found: error
