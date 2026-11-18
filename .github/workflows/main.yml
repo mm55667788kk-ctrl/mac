@@ -1,4 +1,4 @@
-name: Build SahraMAC 3.0 IPA
+name: Build SahraMAC IPA
 on:
   workflow_dispatch:
   push:
@@ -6,22 +6,52 @@ on:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Build SahraMAC 3.0
+          fetch-depth: 0
+
+      - name: Build SahraMAC
         run: |
-          source_dir="$(mktemp -d)"
-          unzip -oq SahraMAC-iOS-3.0.zip -d "$source_dir"
-          cd "$source_dir/SahraMAC-iOS"
-          test "$(plutil -extract CFBundleShortVersionString raw -o - App/Info.plist)" = 3.0
+          set -e
+          zip=""; best=0
+          for f in SahraMAC-iOS*.zip; do
+            [ -f "$f" ] || continue
+            t=$(git log -1 --format=%ct -- "$f" 2>/dev/null || echo 0)
+            if [ "${t:-0}" -ge "$best" ]; then best=${t:-0}; zip="$f"; fi
+          done
+          src="$GITHUB_WORKSPACE"
+          if [ -n "$zip" ]; then
+            echo "Using: $zip"
+            echo "Built from: \`$zip\`" >> "$GITHUB_STEP_SUMMARY"
+            tmp="$(mktemp -d)"
+            unzip -oq "$zip" -d "$tmp"
+            src="$(dirname "$(find "$tmp" -maxdepth 3 -name build-ipa.sh | head -1)")"
+          fi
+          echo "SRC_DIR=$src" >> "$GITHUB_ENV"
+          cd "$src"
           bash build-ipa.sh
           cp SahraMAC.ipa "$GITHUB_WORKSPACE/SahraMAC.ipa"
+          cp SahraMAC-lite.ipa "$GITHUB_WORKSPACE/SahraMAC-lite.ipa" 2>/dev/null || true
+          mkdir -p "$GITHUB_WORKSPACE/build-logs"
+          cp -R build/logs/. "$GITHUB_WORKSPACE/build-logs/" 2>/dev/null || true
+
       - uses: actions/upload-artifact@v4
         with:
           name: SahraMAC-ipa
-          path: SahraMAC.ipa
+          path: |
+            SahraMAC.ipa
+            SahraMAC-lite.ipa
           if-no-files-found: error
+
+      - if: failure()
+        run: |
+          mkdir -p build-logs
+          cp -R "${SRC_DIR:-.}"/build/logs/. build-logs/ 2>/dev/null || true
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build-logs
+          if-no-files-found: ignore
