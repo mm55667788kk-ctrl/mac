@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Use the project folder if the zip was uploaded as is
@@ -35,7 +37,7 @@ jobs:
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
           echo "sdk.dir=$SDK" > "$PROJECT_DIR/local.properties"
           sudo mkdir -p "$SDK/licenses"
-          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad1PbWWqgKDBDorh525uecKaGZD21FGSoCeR\nd56f5187479451eabf01fb78af6dfcb131a6481e\n' | sudo tee -a "$SDK/licenses/android-sdk-license" > /dev/null
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n' | sudo tee -a "$SDK/licenses/android-sdk-license" > /dev/null
           ls "$SDK/platforms" "$SDK/build-tools" || true
           if [ ! -d "$SDK/platforms/android-34" ] || [ ! -d "$SDK/build-tools/34.0.0" ]; then
             yes | sudo env "PATH=$PATH" "JAVA_HOME=$JAVA_HOME" "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" "platforms;android-34" "build-tools;34.0.0" || true
@@ -53,3 +55,10 @@ jobs:
           name: SahraMAC-apk
           path: SahraMAC.apk
           if-no-files-found: error
+      - name: Publish the APK with a fixed download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+          gh release create apk "$GITHUB_WORKSPACE/SahraMAC.apk" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "SahraMAC APK" --notes "Latest APK build"
+          echo "Direct link: https://github.com/$GITHUB_REPOSITORY/releases/download/apk/SahraMAC.apk"
