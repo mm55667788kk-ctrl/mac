@@ -28,7 +28,18 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      - name: Prepare the Android SDK that comes with the runner
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "sdk.dir=$SDK" > "$PROJECT_DIR/local.properties"
+          sudo mkdir -p "$SDK/licenses"
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n8933bad1PbWWqgKDBDorh525uecKaGZD21FGSoCeR\nd56f5187479451eabf01fb78af6dfcb131a6481e\n' | sudo tee -a "$SDK/licenses/android-sdk-license" > /dev/null
+          ls "$SDK/platforms" "$SDK/build-tools" || true
+          if [ ! -d "$SDK/platforms/android-34" ] || [ ! -d "$SDK/build-tools/34.0.0" ]; then
+            yes | sudo env "PATH=$PATH" "JAVA_HOME=$JAVA_HOME" "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" "platforms;android-34" "build-tools;34.0.0" || true
+          fi
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
